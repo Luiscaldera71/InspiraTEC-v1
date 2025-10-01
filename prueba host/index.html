@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inspiratec - Generador de Planes de Clase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "@google/genai": "https://esm.sh/@google/genai@^0.12.0"
+      }
+    }
+  </script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+
+  <!-- Authentication Container -->
+  <div id="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <img id="auth-logo" src="https://drive.google.com/thumbnail?id=1WypPOdaKzqhcGX_F2m3t64usLhMJY5Mp" alt="Inspiratec Logo">
+        <h2 id="auth-title">Bienvenido a Inspiratec</h2>
+      </div>
+      <!-- Login Form -->
+      <form id="login-form" class="auth-form">
+        <p class="auth-subtitle">Ingresa para continuar</p>
+        <div class="form-group">
+          <label for="login-email">Correo Electrónico</label>
+          <input type="email" id="login-email" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Contraseña</label>
+          <input type="password" id="login-password" required>
+        </div>
+        <p id="login-error" class="auth-error"></p>
+        <button type="submit" class="auth-button">Ingresar</button>
+        <p class="auth-toggle">¿No tienes una cuenta? <a href="#" id="show-signup">Regístrate</a></p>
+      </form>
+      <!-- Signup Form -->
+      <form id="signup-form" class="auth-form" style="display: none;">
+        <p class="auth-subtitle">Crea una nueva cuenta</p>
+        <div class="form-group">
+          <label for="signup-email">Correo Electrónico</label>
+          <input type="email" id="signup-email" required>
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Contraseña</label>
+          <input type="password" id="signup-password" required>
+        </div>
+        <p id="signup-error" class="auth-error"></p>
+        <button type="submit" class="auth-button">Registrarse</button>
+        <p class="auth-toggle">¿Ya tienes una cuenta? <a href="#" id="show-login">Ingresa</a></p>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Main Application Wrapper -->
+  <div id="main-app" style="display: none;">
+    <header>
+      <div class="header-content">
+        <div class="header-title-container">
+          <img id="header-logo" src="https://drive.google.com/thumbnail?id=1WypPOdaKzqhcGX_F2m3t64usLhMJY5Mp" alt="Inspiratec Logo">
+          <h1 id="main-title">INSPIRATEC</h1>
+        </div>
+        <p class="header-subtitle">Tu inspiración para la enseñanza de tecnología e informática en Colombia</p>
+      </div>
+      <nav class="main-nav">
+        <button id="nav-inicio-button" class="nav-button active">Inicio</button>
+        <button id="nav-mis-planes-button" class="nav-button">
+          Mis Planes
+          <span id="saved-plans-count-badge" style="display: none;"></span>
+        </button>
+        <button id="nav-ayuda-button" class="nav-button">Ayuda</button>
+      </nav>
+       <div id="user-session-info" style="display: none;">
+        <span id="user-email"></span>
+        <button id="logout-button" class="nav-button">Cerrar Sesión</button>
+      </div>
+    </header>
+
+    <main id="app-container">
+      <div id="wizard-container">
+        <!-- Wizard Progress Bar -->
+        <div id="progress-bar">
+          <div class="progress-bar-step active" data-step="1">
+            <div class="progress-bar-circle">1</div>
+            <div class="progress-bar-label">Básico</div>
+          </div>
+          <div class="progress-bar-line"></div>
+          <div class="progress-bar-step" data-step="2">
+            <div class="progress-bar-circle">2</div>
+            <div class="progress-bar-label">Contenido</div>
+          </div>
+          <div class="progress-bar-line"></div>
+          <div class="progress-bar-step" data-step="3">
+            <div class="progress-bar-circle">3</div>
+            <div class="progress-bar-label">Estándares</div>
+          </div>
+          <div class="progress-bar-line"></div>
+          <div class="progress-bar-step" data-step="4">
+            <div class="progress-bar-circle">4</div>
+            <div class="progress-bar-label">Inclusión</div>
+          </div>
+        </div>
+
+        <div class="wizard-content">
+          <!-- Paso 1: Información Básica -->
+          <div class="wizard-step active-step" id="step-1" aria-labelledby="step-1-title">
+            <div class="step-header">
+              <h2 id="step-1-title">Información Básica</h2>
+              <p>Comienza dando un nombre a tu clase, Grado, Materia y Duración.</p>
+            </div>
+            <div class="form-group">
+              <label for="nombreClase">¿Nombre de la clase o tema?</label>
+              <input type="text" id="nombreClase" name="nombreClase" placeholder="Ej: Introducción a la programación con Scratch">
+            </div>
+            <div class="form-group">
+              <label for="nivelEducativo">Grado</label>
+              <select id="nivelEducativo" name="nivelEducativo">
+                <option value="">Selecciona un grado...</option>
+                <option value="Grado 1">Grado 1</option>
+                <option value="Grado 2">Grado 2</option>
+                <option value="Grado 3">Grado 3</option>
+                <option value="Grado 4">Grado 4</option>
+                <option value="Grado 5">Grado 5</option>
+                <option value="Grado 6">Grado 6</option>
+                <option value="Grado 7">Grado 7</option>
+                <option value="Grado 8">Grado 8</option>
+                <option value="Grado 9">Grado 9</option>
+                <option value="Grado 10">Grado 10</option>
+                <option value="Grado 11">Grado 11</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="materia">Materia</label>
+              <input type="text" id="materia" name="materia" placeholder="Ej: Tecnología e Informática" value="Tecnología e Informática">
+            </div>
+            <div class="form-group">
+              <label for="duracionClase">Duración de la Clase</label>
+              <input type="text" id="duracionClase" name="duracionClase" placeholder="Ej: 90 minutos, 2 sesiones">
+            </div>
+            <div class="form-group">
+              <label for="disponibilidadRecursos">Disponibilidad de Recursos</label>
+              <select id="disponibilidadRecursos" name="disponibilidadRecursos">
+                  <option value="">Selecciona una opción de recursos</option>
+                  <option value="Aula Tradicional: Pizarrón, marcadores, papel, reciclados. Acceso nulo a tecnología.">A. Aula Tradicional: Pizarrón, marcadores, papel, reciclados. Acceso nulo a tecnología.</option>
+                  <option value="Aula con Apoyo Tecnológico Básico: Acceso ocasional a computadoras/internet.">B. Aula con Apoyo Tecnológico Básico: Acceso ocasional a computadoras/internet.</option>
+                  <option value="Aula Tecnológicamente Integrada: Buena conectividad, acceso regular a dispositivos.">C. Aula Tecnológicamente Integrada: Buena conectividad, acceso regular a dispositivos.</option>
+                  <option value="Acceso a Laboratorio/Taller Básico: Herramientas manuales, equipamiento estándar.">D. Acceso a Laboratorio/Taller Básico: Herramientas manuales, equipamiento estándar.</option>
+                  <option value="Acceso a Espacio Maker/STEM Avanzado: Impresoras 3D, robótica, sensores.">E. Acceso a Espacio Maker/STEM Avanzado: Impresoras 3D, robótica, sensores.</option>
+                  <option value="Entorno Exterior/Comunitario: Proyectos en patios, huertas, comunidad.">F. Entorno Exterior/Comunitario: Proyectos en patios, huertas, comunidad.</option>
+              </select>
+            </div>
+            <div class="navigation-buttons">
+              <button type="button" class="next-button" data-next="2">Siguiente →</button>
+            </div>
+          </div>
+
+          <!-- Paso 2: Metodología y Contenido -->
+          <div class="wizard-step" id="step-2" aria-labelledby="step-2-title">
+            <div class="step-header">
+              <h2 id="step-2-title">Metodología y Contenido</h2>
+              <p>Define cómo enseñarás y qué cubrirás en la clase.</p>
+            </div>
+            <div class="form-group">
+              <label for="metodologia">Metodología de enseñanza</label>
+              <select id="metodologia" name="metodologia">
+                <option value="">Selecciona una metodología...</option>
+                <option value="Clase magistral">Clase magistral</option>
+                <option value="Aprendizaje activo">Aprendizaje activo</option>
+                <option value="Aprendizaje práctico">Aprendizaje práctico</option>
+                <option value="Aprendizaje social y emocional">Aprendizaje social y emocional</option>
+                <option value="DUA: Diseño Universal para el Aprendizaje">DUA: Diseño Universal para el Aprendizaje</option>
+                <option value="Aprendizaje Basado en Casos">Aprendizaje Basado en Casos</option>
+                <option value="Aprendizaje Basado en Indagación">Aprendizaje Basado en Indagación</option>
+                <option value="Aprendizaje Basado en Investigación">Aprendizaje Basado en Investigación</option>
+                <option value="Aprendizaje Basado en Problemas (ABP)">Aprendizaje Basado en Problemas (ABP)</option>
+                <option value="Aprendizaje Basado en Proyectos (ABPro)">Aprendizaje Basado en Proyectos (ABPro)</option>
+                <option value="Aprendizaje Basado en Retos">Aprendizaje Basado en Retos</option>
+                <option value="Aprendizaje Colaborativo">Aprendizaje Colaborativo</option>
+                <option value="Aprendizaje Invertido (Flipped Learning)">Aprendizaje Invertido (Flipped Learning)</option>
+                <option value="Design Thinking">Design Thinking</option>
+                <option value="Gamificación">Gamificación</option>
+                <option value="Aprendizaje Servicio">Aprendizaje Servicio</option>
+                <option value="Microlearning">Microlearning</option>
+                <option value="STEAM">STEAM</option>
+                <option value="Pensamiento Computacional">Pensamiento Computacional</option>
+                <option value="Otra">Otra (describir en objetivos/contenido)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div class="label-with-button">
+                  <label for="queAprenden">¿Qué quieres que tus estudiantes aprendan?</label>
+                  <button type="button" id="sugerirIdeasButton" class="suggester-button">
+                      💡 <span class="suggester-button-text">Sugerir Ideas</span>
+                      <span class="spinner" style="display: none;"></span>
+                  </button>
+              </div>
+              <textarea id="queAprenden" name="queAprenden" rows="5" placeholder="Describe los principales conceptos y habilidades..."></textarea>
+            </div>
+            <div class="navigation-buttons">
+              <button type="button" class="back-button" data-prev="1">← Atrás</button>
+              <button type="button" class="next-button" data-next="3">Siguiente →</button>
+            </div>
+          </div>
+
+          <!-- Paso 3: Estándares y Objetivos -->
+          <div class="wizard-step" id="step-3" aria-labelledby="step-3-title">
+            <div class="step-header">
+              <h2 id="step-3-title">Estándares y Objetivos</h2>
+              <p>Alinea tu clase con los lineamientos curriculares de Colombia.</p>
+            </div>
+            <div class="form-group">
+              <div class="label-with-button">
+                <label for="estandaresObjetivos">Estándares y Objetivos de Aprendizaje</label>
+                <button type="button" id="sugerirEstandaresButton" class="suggester-button">
+                    💡 <span class="suggester-button-text">Sugerir Estándares</span>
+                    <span class="spinner" style="display: none;"></span>
+                </button>
+              </div>
+              <textarea id="estandaresObjetivos" name="estandaresObjetivos" rows="7" placeholder="Describe los componentes, competencias y evidencias..."></textarea>
+            </div>
+            <div class="navigation-buttons">
+              <button type="button" class="back-button" data-prev="2">← Atrás</button>
+              <button type="button" class="next-button" data-next="4">Siguiente →</button>
+            </div>
+          </div>
+
+          <!-- Paso 4: Adaptaciones Inclusivas -->
+          <div class="wizard-step" id="step-4" aria-labelledby="step-4-title">
+            <div class="step-header">
+                <h2 id="step-4-title">Adaptaciones Inclusivas</h2>
+                <p>Adapta tu plan para todos tus estudiantes.</p>
+            </div>
+            <div class="form-group">
+                <label>¿Deseas incluir adaptaciones para necesidades educativas especiales?</label>
+                <div class="checkbox-container">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="adaptacionVisual" name="adaptacionVisual">
+                        <label for="adaptacionVisual">Discapacidad Visual</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="adaptacionAuditiva" name="adaptacionAuditiva">
+                        <label for="adaptacionAuditiva">Discapacidad Auditiva</label>
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="adaptacionMotora" name="adaptacionMotora">
+                        <label for="adaptacionMotora">Discapacidad Motora</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="adaptacionOtra">Otra necesidad (especificar)</label>
+                <input type="text" id="adaptacionOtra" name="adaptacionOtra" placeholder="Ej: Trastorno del Espectro Autista, TDAH">
+            </div>
+            <div class="navigation-buttons">
+                <button type="button" class="back-button" data-prev="3">← Atrás</button>
+                <button type="button" id="generate-button" class="cta-button">✨ Generar Plan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section id="output-section" aria-labelledby="output-title" style="display:none;">
+        <div id="plan-output-container-card">
+          <h2 id="output-title">Plan de Clase Generado</h2>
+          <div id="plan-output-container" aria-live="polite">
+            <p>Tu plan de clase aparecerá aquí.</p>
+          </div>
+          <div id="editor-actions" class="editor-actions" style="display: none;">
+            <button id="cancel-edit-button" class="action-button secondary-action">Cancelar</button>
+            <button id="save-edit-button" class="action-button">Guardar Cambios</button>
+          </div>
+        </div>
+        
+        <!-- This container is now hidden via CSS, actions moved to sidebar -->
+        <div class="output-actions">
+          <button id="save-plan-button" class="action-button" style="display: none;">💾 Guardar Plan</button>
+          <button id="generate-rubric-button" class="action-button" style="display: none;">✨ Generar Rúbrica</button>
+          <button id="generate-slides-button" class="action-button" style="display: none;">🖥️ Crear Diapositivas</button>
+          <button id="generate-quiz-button" class="action-button" style="display: none;">🧠 Generar Preguntas</button>
+          <button id="generate-wordsearch-button" class="action-button" style="display: none;">🧩 Crear Sopa de Letras</button>
+          <button id="download-pdf-button" class="action-button" style="display: none;">📄 Descargar PDF</button>
+          <button id="reset-button" class="action-button secondary-action" style="display: none;">➕ Crear Nuevo Plan</button>
+        </div>
+        
+        <div class="generated-content-wrapper">
+          <details id="rubric-section-details" style="display: none;">
+            <summary>
+              <h2 id="rubric-title">Rúbrica de Evaluación Sugerida</h2>
+            </summary>
+            <div id="rubric-output-container" aria-live="polite"></div>
+          </details>
+
+          <details id="slides-section-details" style="display: none;">
+            <summary>
+              <h2 id="slides-title">Diapositivas Sugeridas</h2>
+            </summary>
+            <div id="slides-output-container" aria-live="polite"></div>
+          </details>
+
+          <details id="interactive-activities-section-details" style="display: none;">
+            <summary>
+              <h2 id="interactive-activities-title">Actividades Interactivas Sugeridas</h2>
+            </summary>
+            <div id="interactive-activities-container" aria-live="polite"></div>
+          </details>
+
+          <!-- Feedback Section -->
+          <details id="feedback-section-details" style="display: none;">
+            <summary>
+              <h2 id="feedback-title">Retroalimentación del Plan de Clase</h2>
+            </summary>
+            <div id="feedback-container">
+                <p>Una vez que hayas aplicado este plan en tu clase, ¡cuéntanos cómo te fue! Tu retroalimentación es muy valiosa.</p>
+                <form id="feedback-form">
+                    <div class="form-group">
+                        <label for="feedback-text">Tus comentarios:</label>
+                        <textarea id="feedback-text" rows="5" placeholder="Describe cómo funcionó el plan, qué les gustó a los estudiantes, qué cambiarías, etc." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="feedback-photos">Sube fotos de la experiencia (opcional):</label>
+                        <input type="file" id="feedback-photos" multiple accept="image/*">
+                    </div>
+                     <div id="feedback-photo-previews"></div>
+                    <button type="submit" id="submit-feedback-button" class="action-button">Enviar Retroalimentación</button>
+                </form>
+                <div id="feedback-display" class="feedback-display-container" style="display: none;">
+                  <h4>Retroalimentación Enviada:</h4>
+                  <!-- Submitted feedback will be displayed here -->
+                </div>
+            </div>
+          </details>
+
+        </div>
+
+      </section>
+
+      <section id="help-section" style="display: none;">
+        <div id="help-content-card">
+            <h2>Ayuda y Documentación de Inspiratec</h2>
+
+            <h3>¿Qué es Inspiratec?</h3>
+            <p><strong>Inspiratec</strong> es una herramienta innovadora diseñada para asistir a los docentes de tecnología e informática en Colombia. Utilizando el poder de la inteligencia artificial, nuestra aplicación ayuda a generar planes de clase detallados, creativos y alineados con el currículo nacional, permitiendo a los educadores dedicar más tiempo a lo que realmente importa: enseñar e inspirar a sus estudiantes.</p>
+
+            <h3>Proyecto de Investigación</h3>
+            <p>Esta aplicación es el resultado de un proyecto de investigación desarrollado en la <strong>Universidad de Córdoba</strong>, Colombia. Nace del interés por explorar cómo las nuevas tecnologías de IA pueden apoyar y enriquecer los procesos pedagógicos en nuestro contexto educativo.</p>
+            <p><strong>Autores:</strong> Luis Caldera y Juan Carlos Giraldo.</p>
+            
+            <hr class="help-divider">
+
+            <h3>Funcionalidades Principales</h3>
+            
+            <h4>1. Generación Guiada de Planes de Clase</h4>
+            <p>Nuestro asistente te guía a través de 4 sencillos pasos para asegurar que tu plan de clase sea completo y bien estructurado:</p>
+            <ul>
+                <li><strong>Paso 1: Información Básica:</strong> Define el tema, grado y duración de tu clase.</li>
+                <li><strong>Paso 2: Contenido:</strong> Elige una metodología de enseñanza y describe qué aprenderán tus estudiantes. ¡Usa el botón <strong>"Sugerir Ideas"</strong> para obtener ayuda de la IA!</li>
+                <li><strong>Paso 3: Estándares:</strong> Alinea tu plan con los estándares del Ministerio de Educación Nacional. El botón <strong>"Sugerir Estándares"</strong> te ayudará a encontrar los componentes y competencias relevantes.</li>
+                <li><strong>Paso 4: Inclusión:</strong> Selecciona adaptaciones para atender las necesidades educativas especiales de tus estudiantes.</li>
+            </ul>
+
+            <h4>2. Creación de Recursos Adicionales con IA</h4>
+            <p>Una vez generado tu plan, puedes enriquecerlo aún más:</p>
+            <ul>
+                <li><strong>Generar Rúbrica:</strong> Crea una rúbrica de evaluación detallada y coherente con los objetivos de tu clase.</li>
+                <li><strong>Crear Diapositivas:</strong> Genera una estructura de diapositivas con el contenido clave de tu plan para usar en clase.</li>
+                <li><strong>Generar Actividades:</strong> Crea preguntas de repaso y sopas de letras para hacer tu clase más interactiva.</li>
+                <li><strong>Recursos Visuales:</strong> Dentro del plan, verás sugerencias de imágenes. Haz clic en <strong>"Generar Recurso"</strong> para que la IA cree una ilustración educativa al instante.</li>
+            </ul>
+
+            <h4>3. Edición y Refinamiento</h4>
+            <ul>
+                <li><strong>Edición Manual:</strong> Usa el botón <strong>"Editar Plan"</strong> para activar el modo de edición y hacer ajustes directamente en el texto. No olvides <strong>"Guardar Cambios"</strong>.</li>
+                <li><strong>Asistente IA:</strong> Abre el panel del <strong>Asistente IA</strong> para chatear con la inteligencia artificial. Pídele que alargue una sección, simplifique el lenguaje, añada un ejemplo, ¡y mucho más!</li>
+            </ul>
+
+            <h4>4. Gestión de Planes</h4>
+            <ul>
+                <li><strong>Guardar Plan:</strong> Haz clic en <strong>"Guardar Plan"</strong> para almacenar tu trabajo en la nube, asociado a tu cuenta. Si editas un plan ya guardado y lo guardas de nuevo, los cambios se actualizarán automáticamente sin crear un duplicado.</li>
+                <li><strong>Mis Planes:</strong> Accede a todos tus planes guardados desde el botón en la esquina superior derecha. Desde allí puedes <strong>Cargar</strong> un plan para seguir trabajando en él o <strong>Eliminarlo</strong>.</li>
+            </ul>
+
+            <h4>5. Exportación a PDF</h4>
+            <p>Con el botón <strong>"Descargar PDF"</strong>, puedes exportar tu trabajo. Se abrirá una ventana donde podrás seleccionar qué componentes deseas incluir en el documento final: el plan de clase, la rúbrica, las diapositivas y las actividades interactivas.</p>
+        </div>
+      </section>
+
+      <div id="loading-overlay" aria-live="assertive" role="status">
+        <div class="loading-spinner-large"></div>
+        <p>Generando tu plan de clase...</p>
+      </div>
+
+      <!-- Modals -->
+      <div id="download-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <h3>Selecciona qué deseas descargar</h3>
+          <div class="modal-options">
+            <div class="checkbox-group">
+              <input type="checkbox" id="download-plan-checkbox" name="download-plan" checked>
+              <label for="download-plan-checkbox">Plan de Clase</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="download-rubric-checkbox" name="download-rubric">
+              <label for="download-rubric-checkbox">Rúbrica de Evaluación</label>
+            </div>
+             <div class="checkbox-group">
+              <input type="checkbox" id="download-slides-checkbox" name="download-slides">
+              <label for="download-slides-checkbox">Diapositivas de la Clase</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="download-activities-checkbox" name="download-activities">
+              <label for="download-activities-checkbox">Actividades Interactivas</label>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button id="cancel-download-button" class="modal-button-secondary">Cancelar</button>
+            <button id="confirm-download-button" class="modal-button-primary">Descargar PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="saved-plans-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+          <h3>Mis Planes Guardados</h3>
+          <div id="saved-plans-list">
+            <!-- Saved plans will be injected here by JS -->
+          </div>
+          <div class="modal-actions">
+            <button id="close-saved-plans-button" class="modal-button-secondary">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside id="right-sidebar">
+      <div class="sidebar-group">
+        <button id="sidebar-generate-plan" class="sidebar-button" title="Generar Plan">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 22H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v18a1 1 0 0 1-1-1zm-1-2V4H5v16h14zM16 8H8v2h8V8zm-2 4H8v2h6v-2z"></path></svg>
+          <span class="sidebar-label">Generar Plan</span>
+        </button>
+        <button id="sidebar-save-plan" class="sidebar-button" title="Guardar Plan">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path></svg>
+          <span class="sidebar-label">Guardar Plan</span>
+        </button>
+        <button id="sidebar-edit-plan" class="sidebar-button" title="Editar Plan">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>
+          <span class="sidebar-label">Editar Plan</span>
+        </button>
+         <button id="sidebar-ai-assistant" class="sidebar-button" title="Asistente IA">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"></path></svg>
+          <span class="sidebar-label">Asistente IA</span>
+        </button>
+      </div>
+      <hr class="sidebar-divider">
+      <div class="sidebar-group-secondary">
+        <button id="sidebar-generate-rubric" class="sidebar-button" title="Generar Rúbrica">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"></path></svg>
+          <span class="sidebar-label">Generar Rúbrica</span>
+        </button>
+        <button id="sidebar-generate-slides" class="sidebar-button" title="Crear Diapositivas">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-6V7h6v6z"></path></svg>
+          <span class="sidebar-label">Crear Diapositivas</span>
+        </button>
+        <button id="sidebar-generate-quiz" class="sidebar-button" title="Generar Preguntas">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"></path></svg>
+          <span class="sidebar-label">Generar Preguntas</span>
+        </button>
+        <button id="sidebar-generate-wordsearch" class="sidebar-button" title="Crear Sopa de Letras">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm0-4h-2v-2h2v2zm-4 0h-2v-2h2v2zm-4 0H7v-2h2v2zm0-4H7V7h2v2zm4 0h-2V7h2v2zm4 0h-2V7h2v2z"></path></svg>
+          <span class="sidebar-label">Sopa de Letras</span>
+        </button>
+        <button id="sidebar-download-pdf" class="sidebar-button" title="Descargar PDF">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"></path></svg>
+          <span class="sidebar-label">Descargar PDF</span>
+        </button>
+        <button id="sidebar-reset" class="sidebar-button" title="Crear Nuevo Plan">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"></path></svg>
+          <span class="sidebar-label">Nuevo Plan</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- AI Assistant Panel -->
+    <div id="ai-assistant-panel" class="ai-assistant-panel">
+      <div class="ai-assistant-header">
+          <h3>Asistente IA</h3>
+          <button id="ai-assistant-close-btn" class="ai-assistant-close-btn" title="Cerrar">&times;</button>
+      </div>
+      <div id="ai-assistant-messages" class="ai-assistant-messages">
+          <!-- Messages will be injected here -->
+      </div>
+      <form id="ai-assistant-form" class="ai-assistant-form">
+          <input type="text" id="ai-assistant-input" placeholder="Ej: Hazlo más corto..." autocomplete="off" required>
+          <button type="submit" id="ai-assistant-send-btn" title="Enviar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+          </button>
+      </form>
+    </div>
+
+
+    <footer>
+      <p>&copy; 2025 Inspiratec. Un proyecto del semillero AVI.</p>
+    </footer>
+
+    <!-- Fullscreen Slide Modal -->
+    <div id="fullscreen-slide-modal" class="modal-overlay" style="display: none;">
+      <div class="fullscreen-slide-content">
+        <button id="close-fullscreen-slide-btn" class="fullscreen-close-button" title="Cerrar (Esc)">&times;</button>
+        <div class="fullscreen-slide-body">
+          <button id="fullscreen-prev-slide-button" class="fullscreen-nav-arrow" title="Anterior (←)">‹</button>
+          <div id="fullscreen-slide-viewer" class="slide-container-fullscreen">
+            <!-- Fullscreen slide content is injected here -->
+          </div>
+          <button id="fullscreen-next-slide-button" class="fullscreen-nav-arrow" title="Siguiente (→)">›</button>
+        </div>
+        <div id="fullscreen-slide-counter" class="fullscreen-counter"></div>
+      </div>
+    </div>
+  </div> <!-- End of #main-app -->
+
+  <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
